@@ -1669,8 +1669,8 @@ public abstract class AbstractSocketChannelBinding<P extends ChannelBindingProvi
                         boolean error = false;
 
                         try {
-                            // TODO: Additional code to split readBuffer in multiple parts, in case the data send by the
-                            // remote end is not correctly fragemented. Could be handed of to implementation class if
+                            // TODO: Additional code to split readBuffer into multiple parts, in case the data sent by the
+                            // remote end is not correctly fragmented. Could be handed off to implementation class if,
                             // for example, the buffer needs to be split based on a special character like line feed or
                             // carriage return
                             numberBytesRead = theSocketChannel.read(readBuffer);
@@ -1687,7 +1687,7 @@ public abstract class AbstractSocketChannelBinding<P extends ChannelBindingProvi
                             error = true;
                         }
 
-                        if (numberBytesRead == -1) {
+                        if (numberBytesRead == -1 || error) {
                             try {
                                 theSocketChannel.close();
                             } catch (IOException e) {
