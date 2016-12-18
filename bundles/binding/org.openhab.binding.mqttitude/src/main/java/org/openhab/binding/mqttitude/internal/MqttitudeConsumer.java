@@ -45,6 +45,9 @@ public class MqttitudeConsumer implements MqttMessageConsumer {
     // the topic this consumer is subscribed to
     private String topic;
 
+    // whether the binding is activated
+    private boolean activated;
+    
     // the list of items we are monitoring on this topic
     private Map<String, MqttitudeItemConfig> itemConfigs = new HashMap<String, MqttitudeItemConfig>();
 
@@ -99,6 +102,13 @@ public class MqttitudeConsumer implements MqttMessageConsumer {
     }
 
     /**
+     * Set the activated status.
+     */
+    public void setActivated(boolean which) {
+        activated = which;
+    }
+
+    /**
      * @{inheritDoc}
      */
     @Override
@@ -106,6 +116,10 @@ public class MqttitudeConsumer implements MqttMessageConsumer {
         // convert the response to a string
         String decoded = new String(payload);
         logger.trace("Message received on topic {}: {}", topic, decoded);
+        if (!activated) {
+            logger.trace("Binding is not yet activated. Discarding message...");
+            return;
+        }
 
         // read the payload into a JSON param/value map
         Map<String, String> jsonPayload = readJsonPayload(decoded);

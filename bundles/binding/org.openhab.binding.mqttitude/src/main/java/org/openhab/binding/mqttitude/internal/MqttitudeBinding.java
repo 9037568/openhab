@@ -201,6 +201,7 @@ public class MqttitudeBinding extends AbstractBinding<MqttitudeBindingProvider>i
 
         // add this item to our consumer (will replace any existing config for the same item name)
         consumer.addItemConfig(itemConfig);
+        consumer.setActivated(true);
     }
 
     private MqttitudeConsumer getConsumer(String broker, String topic) {
