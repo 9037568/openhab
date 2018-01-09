@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2016 by the respective copyright holders.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -18,17 +18,14 @@ import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
 
 /**
- * <p>
  * This class parses information from the generic binding format and
  * provides NetworkUpsTools binding information from it. It registers as a
  * {@link NetworkUpsToolsBindingProvider} service as well.
- * </p>
  *
- * <p>
- * Here is an examples for valid binding configuration string:
+ * Here is an example of a valid binding configuration string:
  * <ul>
  * <li><code>{ networkupstools = "nas:output.voltage" }</code> - binds to "output.voltage" property of UPS defined as
- * "nas" in openhab.cfg</li>
+ * "nas" in the configuration</li>
  * </ul>
  * 
  * @author jaroslawmazgaj
@@ -67,7 +64,7 @@ public class NetworkUpsToolsGenericBindingProvider extends AbstractGenericBindin
 
         String[] configParts = bindingConfig.trim().split(":");
         if (configParts.length > 2) {
-            throw new BindingConfigParseException("NetworkHealth configuration can contain three parts at max");
+            throw new BindingConfigParseException("NetworkHealth configuration can contain three parts at most");
         }
 
         NetworkUpsToolsBindingConfig config = new NetworkUpsToolsBindingConfig();
@@ -107,5 +104,4 @@ public class NetworkUpsToolsGenericBindingProvider extends AbstractGenericBindin
         public String ups;
         public String property;
     }
-
 }

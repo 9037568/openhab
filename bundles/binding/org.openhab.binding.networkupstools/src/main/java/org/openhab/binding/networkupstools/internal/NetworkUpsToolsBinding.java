@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2016 by the respective copyright holders.
+ * Copyright (c) 2010-2018 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,10 +8,13 @@
  */
 package org.openhab.binding.networkupstools.internal;
 
+import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.lang.StringUtils;
 import org.networkupstools.jnut.Client;
@@ -90,12 +93,26 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
         for (String name : items.keySet()) {
             NutConfig nut = upses.get(name);
             if (nut == null) {
-                logger.error("No configuration for UPS with name: '{}'", name);
+                logger.warn("No configuration found for UPS with name '{}'", name);
                 continue;
             }
+
             Client client = null;
+
             try {
                 client = new Client(nut.host, nut.port, nut.login, nut.pass);
+            } catch (UnknownHostException e) {
+                logger.warn("Failed to create NUT client because host {} is unknown.", nut.host);
+                return;
+            } catch (IOException e) {
+                logger.warn("Failed to create NUT client due to communication error: {}", e.getMessage());
+                return;
+            } catch (Exception e) {
+                logger.warn("Failed to create NUT client due to unexpected error: {}", e.getMessage());
+                return;
+            }
+
+            try {
                 Device device = client.getDevice(nut.device);
 
                 for (ItemDefinition definition : items.get(name)) {
@@ -117,13 +134,13 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
                     if (state != null) {
                         eventPublisher.postUpdate(itemName, state);
                     } else {
-                        logger.error(
-                                "'{}' couldn't be parsed to a State. Valid State-Types are String, Number and Switch",
-                                variable.toString());
+                        logger.warn(
+                                "'{}' couldn't be parsed to a State. Valid types are String, Number, and Switch",
+                                variable);
                     }
                 }
             } catch (Exception ex) {
-                logger.error("Nut processing error", ex);
+                logger.warn("Nut processing error.", ex);
             } finally {
                 if (client != null) {
                     client.disconnect();
@@ -145,51 +162,49 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
      */
     @Override
     public void updated(Dictionary<String, ?> config) throws ConfigurationException {
-        if (config != null) {
-            String refreshIntervalString = (String) config.get("refresh");
-            if (StringUtils.isNotBlank(refreshIntervalString)) {
-                refreshInterval = Long.parseLong(refreshIntervalString);
-            }
-
-            Map<String, NutConfig> newUpses = new HashMap<String, NutConfig>();
-
-            Enumeration<String> keys = config.keys();
-
-            while (keys.hasMoreElements()) {
-                String key = keys.nextElement();
-
-                if ("refresh".equals(key) || "service.pid".equals(key)) {
-                    continue;
-                }
-
-                String[] parts = key.split("\\.");
-                String name = parts[0];
-                String prop = parts[1];
-                String value = (String) config.get(key);
-
-                NutConfig nutConfig = newUpses.get(name);
-                if (nutConfig == null) {
-                    nutConfig = new NutConfig();
-                    newUpses.put(name, nutConfig);
-                }
-
-                if ("device".equalsIgnoreCase(prop)) {
-                    nutConfig.device = value;
-                } else if ("host".equalsIgnoreCase(prop)) {
-                    nutConfig.host = value;
-                } else if ("login".equalsIgnoreCase(prop)) {
-                    nutConfig.login = value;
-                } else if ("pass".equalsIgnoreCase(prop)) {
-                    nutConfig.pass = value;
-                } else if ("port".equalsIgnoreCase(prop)) {
-                    nutConfig.port = Integer.parseInt(value);
-                }
-            }
-
-            upses = newUpses;
-
-            setProperlyConfigured(true);
+        String refreshIntervalString = Objects.toString(config.get("refresh"), null);
+        if (StringUtils.isNotBlank(refreshIntervalString)) {
+            refreshInterval = Long.parseLong(refreshIntervalString);
         }
+
+        Map<String, NutConfig> newUpses = new HashMap<String, NutConfig>();
+
+        Enumeration<String> keys = config.keys();
+
+        while (keys.hasMoreElements()) {
+            String key = keys.nextElement();
+
+            if ("refresh".equals(key) || "service.pid".equals(key)) {
+                continue;
+            }
+
+            String[] parts = key.split("\\.");
+            String name = parts[0];
+            String prop = parts[1];
+            String value = Objects.toString(config.get(key), null);
+
+            NutConfig nutConfig = newUpses.get(name);
+            if (nutConfig == null) {
+                nutConfig = new NutConfig();
+                newUpses.put(name, nutConfig);
+            }
+
+            if ("device".equalsIgnoreCase(prop)) {
+                nutConfig.device = value;
+            } else if ("host".equalsIgnoreCase(prop)) {
+                nutConfig.host = value;
+            } else if ("login".equalsIgnoreCase(prop)) {
+                nutConfig.login = value;
+            } else if ("pass".equalsIgnoreCase(prop)) {
+                nutConfig.pass = value;
+            } else if ("port".equalsIgnoreCase(prop)) {
+                nutConfig.port = Integer.parseInt(value);
+            }
+        }
+
+        upses = newUpses;
+
+        setProperlyConfigured(true);
     }
 
     /**
