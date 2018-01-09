@@ -151,7 +151,7 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
                     }
                 }
             } catch (Exception e) {
-                logger.warn("Unexpected error occurred while processing item dfinitions: {}", e.getMessage());
+                logger.warn("Unexpected error occurred while processing item definitions: {}", e.getMessage());
             } finally {
                 if (client != null) {
                     client.disconnect();
