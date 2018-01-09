@@ -64,7 +64,7 @@ public class NetworkUpsToolsGenericBindingProvider extends AbstractGenericBindin
 
         String[] configParts = bindingConfig.trim().split(":");
         if (configParts.length > 2) {
-            throw new BindingConfigParseException("NetworkHealth configuration can contain three parts at most");
+            throw new BindingConfigParseException("A NetworkUpsTools binding configuration can contain three parts at most");
         }
 
         NetworkUpsToolsBindingConfig config = new NetworkUpsToolsBindingConfig();
