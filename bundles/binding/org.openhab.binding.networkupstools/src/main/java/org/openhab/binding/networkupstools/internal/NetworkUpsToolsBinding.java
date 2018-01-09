@@ -20,6 +20,7 @@ import org.apache.commons.lang.StringUtils;
 import org.networkupstools.jnut.Client;
 import org.networkupstools.jnut.Device;
 import org.networkupstools.jnut.Variable;
+import org.networkupstools.jnut.NutException;
 import org.openhab.binding.networkupstools.NetworkUpsToolsBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.Item;
@@ -98,7 +99,7 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
             }
 
             Client client = null;
-
+            
             try {
                 client = new Client(nut.host, nut.port, nut.login, nut.pass);
             } catch (UnknownHostException e) {
@@ -112,9 +113,19 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
                 return;
             }
 
-            try {
-                Device device = client.getDevice(nut.device);
+            Device device = null;
 
+            try {
+                device = client.getDevice(nut.device);
+            } catch (IOException e) {
+                logger.warn("Couldn't create a device for '{}' due to communication error: {}", nut.device, e.getMessage());
+                return;
+            } catch (NutException e) {
+                logger.warn("Couldn't create a device for '{}' due to unexpected error: {}", nut.device, e.getMessage());
+                return;
+            }
+            
+            try {
                 for (ItemDefinition definition : items.get(name)) {
                     Variable variable = device.getVariable(definition.property);
                     String value = variable.getValue();
@@ -139,8 +150,8 @@ public class NetworkUpsToolsBinding extends AbstractActiveBinding<NetworkUpsTool
                                 variable);
                     }
                 }
-            } catch (Exception ex) {
-                logger.warn("Nut processing error.", ex);
+            } catch (Exception e) {
+                logger.warn("Unexpected error occurred while processing item dfinitions: {}", e.getMessage());
             } finally {
                 if (client != null) {
                     client.disconnect();
