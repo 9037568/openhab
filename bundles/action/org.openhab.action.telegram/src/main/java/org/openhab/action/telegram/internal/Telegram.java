@@ -60,7 +60,7 @@ public class Telegram {
 
     private static final String TELEGRAM_URL = "https://api.telegram.org/bot%s/sendMessage";
     private static final String TELEGRAM_PHOTO_URL = "https://api.telegram.org/bot%s/sendPhoto";
-    private static final int HTTP_TIMEOUT = 2000;
+    private static final int HTTP_TIMEOUT = 30000;
     private static final int HTTP_PHOTO_TIMEOUT = 10000;
     private static final int HTTP_RETRIES = 3;
 
