@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2016 by the respective copyright holders.
+ * Copyright (c) 2010-2017 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -23,6 +23,8 @@ import org.openhab.core.types.State;
  * taken into account.
  *
  * @author Thomas.Eichstaedt-Engelen
+ * @author Chris Carman
+ *
  * @since 0.6.0
  */
 public interface HttpBindingProvider extends BindingProvider {
@@ -52,6 +54,18 @@ public interface HttpBindingProvider extends BindingProvider {
     String getUrl(String itemName, Command command);
 
     /**
+     * Returns the body to use according to <code>itemName</code> and
+     * <code>command</code>. Is used by HTTP-Out-Binding.
+     *
+     * @param itemName the item for which to find a body
+     * @param command the openHAB command for which to find a configuration
+     *
+     * @return the matching body or <code>null</code> if no matching
+     *         body could be found.
+     */
+    String getBody(String itemName, Command command);
+
+    /**
      * Returns HTTP headers to use according to <code>itemName</code> and
      * <code>command</code>. Is used by HTTP-Out-Binding.
      *
@@ -64,11 +78,10 @@ public interface HttpBindingProvider extends BindingProvider {
     Properties getHttpHeaders(String itemName, Command command);
 
     /**
-     * Returns the url to use according to <code>itemName</code> and
-     * <code>command</code>. Is used by HTTP-In-Binding.
+     * Returns the url to use according to <code>itemName</code>.
+     * Is used by HTTP-In-Binding.
      *
      * @param itemName the item for which to find a url
-     * @param command the openHAB command for which to find a configuration
      *
      * @return the matching url or <code>null</code> if no matching
      *         url could be found.
@@ -76,7 +89,7 @@ public interface HttpBindingProvider extends BindingProvider {
     String getUrl(String itemName);
 
     /**
-     * Returns HTTP headers to use according to <code>itemName</code>. It is
+     * Returns HTTP headers to use according to <code>itemName</code>. Is
      * used by HTTP-In-Binding
      *
      * @param itemName the item for which to find headers
@@ -89,7 +102,6 @@ public interface HttpBindingProvider extends BindingProvider {
      * Is used by HTTP-In-Binding.
      *
      * @param itemName the item for which to find a refresh interval
-     * @param command the openHAB command for which to find a configuration
      *
      * @return the matching refresh interval or <code>null</code> if no matching
      *         refresh interval could be found.
@@ -101,7 +113,6 @@ public interface HttpBindingProvider extends BindingProvider {
      * Is used by HTTP-In-Binding.
      *
      * @param itemName the item for which to find a transformation rule
-     * @param command the openHAB command for which to find a configuration
      *
      * @return the matching transformation rule or <code>null</code> if no matching
      *         transformation rule could be found.
@@ -109,12 +120,24 @@ public interface HttpBindingProvider extends BindingProvider {
     String getTransformation(String itemName);
 
     /**
+     * Returns the transformation rule to use according to <code>itemName</code> and
+     * <code>command</code>. Is used by HTTP-Out-Binding.
+     *
+     * @param itemName the item for which to find a transformation rule
+     * @param command the openHAB command for which to find a configuration
+     *
+     * @return the matching transformation rule or <code>null</code> if no matching
+     *         transformation rule could be found.
+     */
+    String getTransformation(String itemName, Command command);
+
+    /**
      * Returns a {@link State} that is one of the named item's accepted data
      * types, parsed from <code>value</code>. If <code>value</code> cannot be parsed
      * into an accepted data type, <code>null</code> is returned.
      *
-     * @param itemName the item for which to produce a {@link State)
-     * @param value the string from which to produce a {@link State)
+     * @param itemName the item for which to produce a State
+     * @param value the string from which to produce a State
      *
      * @return the State, or null if no State can be derived from the value
      */
@@ -126,5 +149,4 @@ public interface HttpBindingProvider extends BindingProvider {
      * @return item which are mapped to a HTTP-In-Binding
      */
     List<String> getInBindingItemNames();
-
 }

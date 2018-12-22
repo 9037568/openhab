@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2016 by the respective copyright holders.
+ * Copyright (c) 2010-2017 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -28,13 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>
  * This class can parse information from the generic binding format and
- * provides HTTP binding information from it. It registers as a
+ * provides HTTP binding information from it. It registers as an
  * {@link HttpBindingProvider} service as well.
- * </p>
  *
- * <p>
  * Here are some examples for valid binding configuration strings:
  * <ul>
  * <li>
@@ -57,6 +54,7 @@ import org.slf4j.LoggerFactory;
  * </ul>
  *
  * @author Thomas.Eichstaedt-Engelen
+ * @author Chris Carman
  *
  * @since 0.6.0
  */
@@ -86,6 +84,13 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
 
     /** {@link Pattern} which matches an Out-Binding */
     private static final Pattern OUT_BINDING_PATTERN = Pattern.compile("(.*?):([A-Z]*):(.*)");
+
+    /** {@link Pattern} that separates a url string from the following post body string */
+    private static final Pattern URL_PARSING_PATTERN = Pattern
+            .compile("^((([^:/?#]+):)?(//([^/?#]*))?([^?#:]*)(\\?([^#:]*))?(#(.*))?)(:.*)?");
+
+    /** {@link Pattern} for parsing a transformation */
+    private static final Pattern TRANSFORM_PATTERN = Pattern.compile("(.*)\\((.*)\\)");
 
     /**
      * {@inheritDoc}
@@ -222,17 +227,17 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
     }
 
     /**
-     * Parses a http-out configuration by using the regular expression
+     * Parses an http-out configuration by using the regular expression
      * <code>(.*?):([A-Z]*):(.*)</code>. Where the groups should contain the
      * following content:
      * <ul>
      * <li>1 - command</li>
      * <li>2 - http method</li>
      * <li>3 - url</li>
+     * <li>4 - post body</li>
      * </ul>
      *
      * @param item
-     *
      * @param bindingConfig the config string to parse
      * @param config
      * @return the filled {@link HttpBindingConfig}
@@ -242,11 +247,13 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
      */
     protected HttpBindingConfig parseOutBindingConfig(Item item, String bindingConfig, HttpBindingConfig config)
             throws BindingConfigParseException {
+        logger.debug("parsing this as an http out binding: {}", bindingConfig);
         Matcher matcher = OUT_BINDING_PATTERN.matcher(bindingConfig);
 
         if (!matcher.matches()) {
             throw new BindingConfigParseException("bindingConfig '" + bindingConfig
-                    + "' doesn't contain a valid out-binding-configuration. A valid configuration is matched by the RegExp '(.*?):?([A-Z]*):(.*)'");
+                    + "' doesn't contain a valid out-binding-configuration. A valid configuration is matched by the RegExp '"
+                    + OUT_BINDING_PATTERN + "'");
         }
         matcher.reset();
 
@@ -258,19 +265,59 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
             Command command = createCommandFromString(item, matcher.group(1));
             configElement.httpMethod = matcher.group(2);
             String lastPart = matcher.group(3).replaceAll("\\\\\"", "");
-            if (lastPart.trim().endsWith("}") && lastPart.contains("{")) {
-                int beginIdx = lastPart.lastIndexOf("{");
-                int endIdx = lastPart.lastIndexOf("}");
-                configElement.url = lastPart.substring(0, beginIdx);
-                configElement.headers = parseHttpHeaders(lastPart.substring(beginIdx + 1, endIdx));
+            logger.debug("URL portion of binding config to be processed: {}", lastPart);
+
+            Matcher urlMatcher = URL_PARSING_PATTERN.matcher(lastPart);
+            urlMatcher.find();
+            if (logger.isDebugEnabled()) {
+                for (int i = 0; i <= urlMatcher.groupCount(); i++) {
+                    logger.debug("Group {}: {}", i, urlMatcher.group(i));
+                }
+            }
+
+            if (urlMatcher.group(1).endsWith("}")) {
+                String g1 = urlMatcher.group(1);
+                int beginIdx = g1.indexOf("{");
+                int endIdx = g1.indexOf("}");
+                configElement.url = g1.substring(0, beginIdx);
+                configElement.headers = parseHttpHeaders(g1.substring(beginIdx + 1, endIdx));
             } else {
-                configElement.url = lastPart;
+                configElement.url = urlMatcher.group(1);
+            }
+
+            if (configElement.httpMethod.equals("POST") && urlMatcher.group(11) != null) {
+                configElement.body = urlMatcher.group(11).substring(1);
+                setBodyTransform(configElement, command);
             }
 
             config.put(command, configElement);
         }
 
         return config;
+    }
+
+    private void setBodyTransform(HttpBindingConfigElement configElement, Command command) {
+        if (configElement == null || configElement.body == null) {
+            logger.trace("No body content found.");
+            return;
+        }
+
+        Matcher transformMatcher = TRANSFORM_PATTERN.matcher(configElement.body);
+        if (!configElement.body.equals("default") && !transformMatcher.matches()) {
+            logger.trace("Body contained no known transforms.");
+            return;
+        }
+
+        if (configElement.body.equals("default")) {
+            configElement.transformation = "default";
+        } else {
+            String transformCmd = transformMatcher.group(1);
+            String transformParam = transformMatcher.group(2);
+            logger.trace("transformCmd: {}", transformCmd);
+            logger.trace("transformParam: {}", transformParam);
+            configElement.transformation = transformCmd + "=" + transformParam;
+            configElement.body = null;
+        }
     }
 
     /**
@@ -363,6 +410,16 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
      * {@inheritDoc}
      */
     @Override
+    public String getBody(String itemName, Command command) {
+        HttpBindingConfig config = (HttpBindingConfig) bindingConfigs.get(itemName);
+        return config != null && getConfigElement(config, command) != null ? getConfigElement(config, command).body
+                : null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Properties getHttpHeaders(String itemName) {
         HttpBindingConfig config = (HttpBindingConfig) bindingConfigs.get(itemName);
         return config != null && config.get(IN_BINDING_KEY) != null ? config.get(IN_BINDING_KEY).headers : null;
@@ -384,6 +441,16 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
     public String getTransformation(String itemName) {
         HttpBindingConfig config = (HttpBindingConfig) bindingConfigs.get(itemName);
         return config != null && config.get(IN_BINDING_KEY) != null ? config.get(IN_BINDING_KEY).transformation : null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getTransformation(String itemName, Command command) {
+        HttpBindingConfig config = (HttpBindingConfig) bindingConfigs.get(itemName);
+        return config != null && getConfigElement(config, command) != null
+                ? getConfigElement(config, command).transformation : null;
     }
 
     /**
@@ -446,6 +513,7 @@ public class HttpGenericBindingProvider extends AbstractGenericBindingProvider i
         public Properties headers;
         public int refreshInterval;
         public String transformation;
+        public String body;
 
         @Override
         public String toString() {

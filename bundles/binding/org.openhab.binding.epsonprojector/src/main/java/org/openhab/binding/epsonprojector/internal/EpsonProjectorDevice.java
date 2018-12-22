@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2016 by the respective copyright holders.
+ * Copyright (c) 2010-2017 by the respective copyright holders.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -32,6 +32,8 @@ public class EpsonProjectorDevice {
         FULL(0x40),
         ZOOM(0x50),
         WIDE(0x70),
+        ANAMORPHIC(0x80),
+        SQUEEZE(0x90),
         ERROR(0xFF);
 
         private int value;
@@ -116,11 +118,19 @@ public class EpsonProjectorDevice {
     }
 
     public enum ColorMode {
+        CINEMANIGHT(0x05),
         DYNAMIC(0x06),
         NATURAL(0x07),
+        HD(0x09),
+        SILVER(0x0A),
         XVCOLOR(0x0B),
         LIVINGROOM(0x0C),
+        THX(0x13),
         CINEMA(0x15),
+        CINEMA3D(0x17),
+        DYNAMIC3D(0x18),
+        THX3D(0x19),
+        BWCINEMA(0x20),
         ERROR(0xFF);
 
         private int value;
@@ -365,8 +375,9 @@ public class EpsonProjectorDevice {
         OFF;
     }
 
-    final private int defaultTimeout = 5000;
-    final private int powerStateTimeout = 40000;
+    final private int defaultTimeout = 5 * 1000;
+    final private int powerOnTimeout = 100 * 1000;
+    final private int powerOffTimeout = 130 * 1000;
 
     private static Logger logger = LoggerFactory.getLogger(EpsonProjectorDevice.class);
 
@@ -381,7 +392,7 @@ public class EpsonProjectorDevice {
         connection = new EpsonProjectorTcpConnector(ip, port);
     }
 
-    private String sendQuery(String query, int timeout) throws EpsonProjectorException {
+    private synchronized String sendQuery(String query, int timeout) throws EpsonProjectorException {
 
         logger.debug("Query: '{}'", query);
         String response = connection.sendMessage(query, timeout);
@@ -395,6 +406,16 @@ public class EpsonProjectorDevice {
 
         if (response.equals("ERR")) {
             throw new EpsonProjectorException("Error response received");
+        }
+
+        if ("PWR OFF".equals(query) && ":".equals(response)) {
+            // When PWR OFF command is sent, next command can be send after 10 seconds after the colon is received
+            logger.debug("Waiting 10 seconds to power OFF completion");
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                // just exit
+            }
         }
 
         return response;
@@ -478,7 +499,7 @@ public class EpsonProjectorDevice {
     }
 
     public void setPower(Switch value) throws EpsonProjectorException {
-        sendCommand(String.format("PWR %s", value.name()), powerStateTimeout);
+        sendCommand(String.format("PWR %s", value.name()), value == Switch.ON ? powerOnTimeout : powerOffTimeout);
     }
 
     /*
