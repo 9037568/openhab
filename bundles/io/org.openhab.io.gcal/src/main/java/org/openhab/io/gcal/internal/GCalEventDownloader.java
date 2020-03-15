@@ -276,10 +276,19 @@ public class GCalEventDownloader extends AbstractActiveService implements Manage
                 if (!calendarCache.containsKey(eventTitle)) {
                     calendarCache.put(eventTitle, new TimeRangeCalendar());
                 }
-                TimeRangeCalendar timeRangeCalendar = calendarCache.get(eventTitle);
-                timeRangeCalendar.addTimeRange(new LongRange(event.getStart().getDateTime().getValue(),
-                        event.getEnd().getDateTime().getValue()));
-
+                if (event.getStart() != null && event.getStart().getDateTime() != null
+                    && event.getEnd() != null && event.getEnd().getDateTime() != null) {
+                        TimeRangeCalendar timeRangeCalendar = calendarCache.get(eventTitle);
+                        timeRangeCalendar.addTimeRange(new LongRange(event.getStart().getDateTime().getValue(),
+                            event.getEnd().getDateTime().getValue()));
+                }
+                else {
+                    logger.debug("One or more date values are missing from the event. Can't add to excluded TimeRangesCalendar.");
+                    logger.debug("Event start = '{}'", event.getStart());
+                    logger.debug("Event start date = '{}'", event.getStart() == null ? "" : event.getStart().getDateTime());
+                    logger.debug("Event end = '{}'", event.getEnd());
+                    logger.debug("Event end date = '{}'.", event.getEnd() == null ? "" : event.getEnd().getDateTime());
+                }
             }
         }
 
